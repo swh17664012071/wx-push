@@ -40,7 +40,8 @@ public class ConfigConstant {
     public String birthday1;
     @Value("${message.config.birthday2}")
     public String birthday2;
-
+    @Value("${message.config.newYear}")
+    public String newYear;
     @Value("${message.config.message}")
     public String message;
     @Value("${ApiSpace.enableDaily}")
@@ -147,5 +148,13 @@ public class ConfigConstant {
 
     public void setOpenidList(ArrayList<String> openidList) {
         this.openidList = openidList;
+    }
+
+    public String getNewYear() {
+        return newYear;
+    }
+
+    public void setNewYear(String newYear) {
+        this.newYear = newYear;
     }
 }

@@ -37,6 +37,10 @@ public class SendServiceImpl implements SendService {
     private ConfigConstant configConstant;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    private String BAD_WEATHER = "雨";
+
+
+
     private String  getAccessToken() {
         //这里直接写死就可以，不用改，用法可以去看api
         String grant_type = "client_credential";
@@ -68,6 +72,9 @@ public class SendServiceImpl implements SendService {
         //遍历用户的ID，保证每个用户都收到推送
         for (String opedId : configConstant.getOpenidList()) {
 
+            String tq = "";
+            String gw = "";
+
             //今天
             String date = DateUtil.formatDate(new Date(), "yyyy-MM-dd");
             String week = DateUtil.getWeekOfDate(new Date());
@@ -78,13 +85,14 @@ public class SendServiceImpl implements SendService {
             logger.info("first:{}", first);
             try {
                 //处理天气
-                JSONObject weatherResult = tianqiService.getWeatherByCity();
+                JSONObject weatherResult = tianqiService.getWeatherByCity(opedId);
                 //城市
                 JSONObject city = JsonObjectUtil.packJsonObject(weatherResult.getString("city"),"#60AEF2");
                 resultMap.put("city", city);
                 logger.info("city:{}", city);
                 //天气
-                JSONObject weather = JsonObjectUtil.packJsonObject(weatherResult.getString("wea"),"#b28d0a");
+                tq = weatherResult.getString("wea");
+                JSONObject weather = JsonObjectUtil.packJsonObject(tq,"#b28d0a");
                 resultMap.put("weather", weather);
                 logger.info("weather:{}", weather);
                 //最低气温
@@ -92,7 +100,8 @@ public class SendServiceImpl implements SendService {
                 resultMap.put("minTemperature", minTemperature);
                 logger.info("minTemperature:{}", minTemperature);
                 //最高气温
-                JSONObject maxTemperature = JsonObjectUtil.packJsonObject(weatherResult.getString("tem_day") + "°","#dc1010");
+                gw = weatherResult.getString("tem_day");
+                JSONObject maxTemperature = JsonObjectUtil.packJsonObject(gw + "°","#dc1010");
                 resultMap.put("maxTemperature", maxTemperature);
                 logger.info("maxTemperature:{}", maxTemperature);
                 //风
@@ -125,26 +134,44 @@ public class SendServiceImpl implements SendService {
                 throw new RuntimeException("天气获取失败");
             }
 
-
-            //生日
             try {
-                JSONObject birthDate1 = getBirthday(configConstant.getBirthday1(), date);
-                resultMap.put("birthDate1", birthDate1);
-                logger.info("birthDate1:{}", birthDate1);
-                JSONObject birthDate2 = getBirthday(configConstant.getBirthday2(), date);
-                resultMap.put("birthDate2", birthDate2);
-                logger.info("birthDate2:{}", birthDate2);
-            } catch (Exception e) {
-                throw new RuntimeException("生日处理失败");
+
+            }catch (Exception e){
+                e.printStackTrace();
+                HashMap<String, Object> map = new HashMap<>();
+                errorList.add(new JSONObject(map));
+                throw new RuntimeException("衣服推荐失败");
             }
 
-            //在一起时间
             try {
-                JSONObject togetherDate = togetherDay(date);
-                resultMap.put("togetherDate", togetherDate);
-                logger.info("togetherDate:{}", togetherDate);
+                //元旦
+                long ydDays = DateUtil.getWorkTime(null);
+                JSONObject ydDaysJson = JsonObjectUtil.packJsonObject(ydDays + " 天", "#FF0000");
+                resultMap.put("newYearDay", ydDaysJson);
+                logger.info("newYearDay:{}", ydDaysJson);
+
+                //新年
+                long xnDays = DateUtil.getWorkTime(configConstant.getNewYear());
+                JSONObject xnDaysJson = JsonObjectUtil.packJsonObject(xnDays + " 天", "#FF0000");
+                resultMap.put("newYear", xnDaysJson);
+                logger.info("newYear:{}", xnDaysJson);
+
             } catch (Exception e) {
-                throw new RuntimeException("在一起时间处理失败");
+                e.printStackTrace();
+                throw new RuntimeException("新年处理失败");
+            }
+
+            //tips
+            try {
+                //穿衣推荐
+                String close = close(Integer.parseInt(gw.replaceAll("°","")));
+                String tips = !weaType(tq)?"出门记得带:口罩、手机、钥匙、(天气恶劣，记得带伞)~":"出门记得带:口罩、手机、钥匙~";
+                JSONObject tipsJson =JsonObjectUtil.packJsonObject(close+"; "+tips,"#EED016");
+                resultMap.put("tips", tipsJson);
+                logger.info("tips:{}", tipsJson);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException("tips处理失败");
             }
             //名言警句，判断有没开启每日一句功能，application.yaml可以配置~
             if (configConstant.isEnableDaily() && StringUtils.hasText(configConstant.getToken())) {
@@ -168,7 +195,8 @@ public class SendServiceImpl implements SendService {
                 }
             }
             //封装数据并发送
-            sendMessage(accessToken, errorList, resultMap, opedId);
+            String[] id = opedId.split("~");
+            sendMessage(accessToken, errorList, resultMap, id[0]);
         }
         JSONObject result = new JSONObject();
         if (errorList.size() > 0) {
@@ -179,6 +207,36 @@ public class SendServiceImpl implements SendService {
             logger.info("信息推送成功！");
         }
         return result.toJSONString();
+    }
+
+    private String close(int du){
+        String close = "";
+
+        if (du>=33){
+            close = "适宜着丝麻、短衣、短裙、薄短裙、短裤等。天气炎热，注意避暑哦~";
+        }else if(du>=28&&du<33){
+            close = "适宜着短衫、短裙、短裤、薄型T恤衫、敞领短袖棉衫等。天气炎热，注意避暑哦~";
+        }else if(du>=25&&du<28){
+            close = "适宜着短衫、短裙、短套装、T恤等。天气偏热，注意休息哦~";
+        }else if(du>=20&&du<25){
+            close = "适宜着单层棉麻面料的短套装、T恤衫、薄牛仔衫裤、休闲服、职业套装等。天气暖和";
+        }else if(du>=15&&du<20){
+            close = "天气温凉，适宜着夹衣、马甲衬衫、长裤、夹克衫、西服套装加薄羊毛衫等。";
+        }else if(du>=5&&du<15){
+            close = "天气凉，适宜着一到两件羊毛衫、大衣、毛套装、皮夹克等春秋着装。天气凉，注意保暖哦~";
+        }else if(du>=-15&&du<5){
+            close = "适宜着棉衣、羽绒衣、冬大衣、皮夹克、毛衣再外罩大衣等;天气凉，注意保暖哦~";
+        }else if(du<-15){
+            close = "适宜着棉衣、羽绒服、冬大衣、皮夹克加羊毛衫、厚呢外套等;天气寒冷，注意保暖哦~";
+        }
+        return close;
+    }
+
+    private boolean weaType(String wea){
+        if (wea.contains("雨")||wea.contains("雪")||wea.contains("阴")){
+            return false;
+        }
+        return true;
     }
 
     private void sendMessage(String accessToken, List<JSONObject> errorList, HashMap<String, Object> resultMap, String opedId) {

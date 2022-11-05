@@ -10,7 +10,7 @@ import java.util.Map;
  * @Description: TODO
  */
 public interface TianqiService {
-    JSONObject getWeatherByCity();
+    JSONObject getWeatherByCity(String id);
 
     JSONObject getWeatherByIP();
     Map<String, String> getTheNextThreeDaysWeather();

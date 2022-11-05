@@ -33,9 +33,10 @@ public class TianqiServiceImpl implements TianqiService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Override
-    public JSONObject getWeatherByCity() {
+    public JSONObject getWeatherByCity(String id) {
         String result = null;
         try {
+            String[] ids = id.split("~");
             OkHttpClient client = new OkHttpClient.Builder().build();
             HttpUrl url = new HttpUrl.Builder()
                     .scheme("https")
@@ -43,7 +44,7 @@ public class TianqiServiceImpl implements TianqiService {
                     .addPathSegments("free/day")
                     .addQueryParameter("appid", configConstant.getWeatherAppId())
                     .addQueryParameter("appsecret", configConstant.getWeatherAppSecret())
-                    .addQueryParameter("city", configConstant.getCity())
+                    .addQueryParameter("city", ids[1])
                     .addQueryParameter("unescape", "1")
                     .build();
             Request request = new Request.Builder()

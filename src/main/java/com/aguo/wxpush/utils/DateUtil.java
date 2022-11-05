@@ -1,9 +1,17 @@
 package com.aguo.wxpush.utils;
 
+import org.springframework.util.StringUtils;
+
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 
 public class DateUtil {
 
@@ -33,15 +41,31 @@ public class DateUtil {
         return weekDays[w];
     }
 
-    public static String daysBetween(String startDate,String endDate) throws ParseException {
+    public static String daysBetween(String startDate, String endDate) throws ParseException {
         long nd = 1000 * 24 * 60 * 60;
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");//设置时间格式
-        Date newStartDate=sdf.parse(startDate);
-        Date newEndDate=sdf.parse(endDate);
+        Date newStartDate = sdf.parse(startDate);
+        Date newEndDate = sdf.parse(endDate);
         long diff = (newEndDate.getTime()) - (newStartDate.getTime()); //计算出毫秒差
         // 计算差多少天
-        String day = diff / nd +"";
+        String day = diff / nd + "";
         return day;
+    }
+
+    public static long getWorkTime(String time) {
+        LocalDateTime needDay = "".equals(time)||null==time
+                ?
+                getNewYearDay()
+                :
+                LocalDateTime.parse(time, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        Duration duration = Duration.between(LocalDateTime.now(),needDay);
+        long days = duration.toDays();
+        return days;
+    }
+
+    private static LocalDateTime getNewYearDay(){
+        String nextNewYearDay = LocalDateTime.now().plusYears(1).getYear()+"-01-01 00:00:00";
+        return LocalDateTime.parse(nextNewYearDay, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
 
